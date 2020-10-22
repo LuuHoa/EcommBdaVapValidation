@@ -13,6 +13,8 @@ import org.apache.spark.sql.SparkSession
 
 object EcommBdaVapValidation extends Serializable with App {
 
+case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: String, gdg_opcode: String, gdg_timestamp: String, gdg_schema: String, gdg_table: String, id: Long, table_name: String, count_date: String, bda_count: Long, vap_count: Long, matched: String, count_diff: Long, date_column_name: String, inserted_date: String, runtime_sql: String)
+
   val spark = SparkSession
     .builder()
     .appName("EcommBdaVapValidation")
@@ -24,24 +26,24 @@ object EcommBdaVapValidation extends Serializable with App {
   spark.sparkContext.setLogLevel("INFO")
 
   var application_id = spark.sparkContext.getConf.getAppId
-  case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: String, gdg_opcode: String, gdg_timestamp: String, gdg_schema: String, gdg_table: String, id: Long, table_name: String, count_date: String, bda_count: Long, vap_count: Long, matched: String, count_diff: Long, date_column_name: String, inserted_date: String, runtime_sql: String)
-
   val logger = LoggerFactory.getLogger(getClass.getName)
-
+  var exitCode=0
   var prop_location = "/tmp/Ecomm_BDA_VAP_Validation/EcommValidationConfig.properties"
   try { prop_location = args(0) }
   catch { case e: Throwable => logger.info("Use default property file: " + prop_location) }
 
   logger.info("Spark application Id: " + application_id)
+  
   val start_time = new Timestamp(System.currentTimeMillis()).toString
   logger.info("EcommBdaVapValidation::job is started at %s", start_time)
-  var exitCode=0
-  logger.info("readProperties method started")
-  val props = readProperties(Array(prop_location), logger)
-  val source_fil_list_Path = s"${props.getProperty("source_fil_list_Path")}"
-  val target_path = s"${props.getProperty("target_validation_count")}"
-  val target_schema = s"${props.getProperty("target_schema")}"
-  val rerun_failed_days = s"${props.getProperty("rerun_failed_days")}"
+  
+  val props_rdd = spark.sparkContext.textFile(prop_location)
+  val props = job_input.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
+  logger.info("Properties: %s", props.toString)
+  val source_fil_list_Path=job_properties("source_fil_list_Path")
+  val target_path = job_properties("target_validation_count")
+  val target_schema = job_properties("target_schema")
+  val rerun_failed_days = job_properties("rerun_failed_days")
   val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
   logger.info("Run date value: " + run_date_formatted)
@@ -228,7 +230,4 @@ object EcommBdaVapValidation extends Serializable with App {
     spark.stop()
     System.exit(exitCode)
   }
-
-
-
 }
