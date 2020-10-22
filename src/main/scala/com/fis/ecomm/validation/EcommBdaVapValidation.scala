@@ -44,6 +44,8 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val target_path = job_properties("target_validation_count")
   val target_schema = job_properties("target_schema")
   val rerun_failed_days = job_properties("rerun_failed_days")
+  val num_thread = job_properties("num_thread")
+    
   val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
   logger.info("Run date value: " + run_date_formatted)
@@ -68,17 +70,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           from failedrun t1
           inner join yes_conf t2 on t1.table_name = t2.table_name""".stripMargin
 
-  def readProperties(args: Array[String], logger: Logger) = {
-    logger.info("readProperties method started")
-    val props: Properties = new Properties()
-    val jobPropPath = new File(args(0))
-    val jobProp = new FileInputStream(jobPropPath)
-    props.load(jobProp)
-    props
-  }
-
-  def getParArray(list: Array[Row], props: Properties) = {
-    val num_thread = s"${props.getProperty("num_thread")}"
+  def getParArray(list: Array[Row]) = {
     val tables = list.par
     tables.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(num_thread.toInt))
     tables
@@ -230,4 +222,5 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
     spark.stop()
     System.exit(exitCode)
   }
+
 }
