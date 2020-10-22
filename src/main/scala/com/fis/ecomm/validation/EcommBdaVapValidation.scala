@@ -29,14 +29,15 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   try { prop_location = args(0) }
   catch { case e: Throwable => logger.info("Use default property file: " + prop_location) }
 
-  logger.info("Spark application Id: " + application_id)
+
   
   val start_time = new Timestamp(System.currentTimeMillis()).toString
-  logger.info("EcommBdaVapValidation::job is started at %s", start_time)
+  println("EcommBdaVapValidation::job is started at " + start_time)
+  println("Spark application Id: " + application_id)
   
   val props_rdd = spark.sparkContext.textFile(prop_location)
   val props = props_rdd.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
-  logger.info("Properties: %s", props.toString)
+  printf("\n Properties: %s", props.toString)
   val source_fil_list_Path=props("source_fil_list_Path")
   val target_path = props("target_validation_count")
   val target_schema = props("target_schema")
@@ -45,7 +46,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
     
   val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
-  logger.info("Run date value: " + run_date_formatted)
+  println("Run date value: " + run_date_formatted)
   import spark.implicits._
   var accumulated_df = Seq.empty[targetSchemeTarget].toDF()
 
@@ -75,7 +76,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
 
 
   def runCount(table_id: Int, table_name: String, count_date: String, date_column_name: String, runtime_sql: String): Unit = {
-    printf("\n table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s ", table_id, table_name, count_date, runtime_sql)
+    printf("\n table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s \n", table_id, table_name, count_date, runtime_sql)
     try {
         val df_count = spark.sql(runtime_sql)
         var bda_count=0L
@@ -94,7 +95,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                select table_name, target_date, record_count  as vap_count
                from
                (
-                   select """+table_name+""" as table_name, target_date, record_count, ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY extract_date desc, inserted_date desc) rn
+                   select '"""+table_name+"""' as table_name, target_date, record_count, ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY extract_date desc, inserted_date desc) rn
                    from """+target_schema+""".vap_to_bda_data_validation
                    where extract_date between '"""+count_date+"""' and to_date(current_date())
                    and table_name = 'CONTEXT_"""+ table_name +"""'
