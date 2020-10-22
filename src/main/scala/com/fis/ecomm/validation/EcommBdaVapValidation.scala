@@ -1,10 +1,7 @@
 package com.fis.ecomm.validation
 
-import java.util.Properties
 import org.slf4j.LoggerFactory
-import java.io.{File, FileInputStream}
 import org.apache.spark.sql._
-import org.slf4j.Logger
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.sql.Timestamp
@@ -38,13 +35,13 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   logger.info("EcommBdaVapValidation::job is started at %s", start_time)
   
   val props_rdd = spark.sparkContext.textFile(prop_location)
-  val props = job_input.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
+  val props = props_rdd.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
   logger.info("Properties: %s", props.toString)
-  val source_fil_list_Path=job_properties("source_fil_list_Path")
-  val target_path = job_properties("target_validation_count")
-  val target_schema = job_properties("target_schema")
-  val rerun_failed_days = job_properties("rerun_failed_days")
-  val num_thread = job_properties("num_thread")
+  val source_fil_list_Path=props("source_fil_list_Path")
+  val target_path = props("target_validation_count")
+  val target_schema = props("target_schema")
+  val rerun_failed_days = props("rerun_failed_days")
+  val num_thread = props("num_thread")
     
   val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
@@ -151,7 +148,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
 
       import spark.implicits._
       val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
-      val tables_par_array_list_p1 = getParArray(tables_array_list_p1, props)
+      val tables_par_array_list_p1 = getParArray(tables_array_list_p1)
 
 
       logger.info("Starting part I - today's validation:")
@@ -183,7 +180,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
 
       logger.info("Starting part II - previous days' validation:")
       val tables_array_list_p2 = spark.sql(query_part2).collect()
-      val tables_par_array_list_p2 = getParArray(tables_array_list_p2, props)
+      val tables_par_array_list_p2 = getParArray(tables_array_list_p2)
       tables_par_array_list_p2.foreach {
         eachrow =>
           try {
