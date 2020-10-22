@@ -23,11 +23,11 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   spark.sparkContext.setLogLevel("INFO")
 
   var application_id = spark.sparkContext.getConf.getAppId
-  val logger = LoggerFactory.getLogger(getClass.getName)
+  //val logger = LoggerFactory.getLogger(getClass.getName)
   var exitCode=0
   var prop_location = "/tmp/Ecomm_BDA_VAP_Validation/EcommValidationConfig.properties"
   try { prop_location = args(0) }
-  catch { case e: Throwable => logger.info("Use default property file: " + prop_location) }
+  catch { case e: Throwable => println("Use default property file: " + prop_location) }
 
 
   
@@ -37,7 +37,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   
   val props_rdd = spark.sparkContext.textFile(prop_location)
   val props = props_rdd.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
-  printf("\n Properties: %s", props.toString)
+  printf("\n Properties: %s \n", props.toString)
   val source_fil_list_Path=props("source_fil_list_Path")
   val target_path = props("target_validation_count")
   val target_schema = props("target_schema")
@@ -51,10 +51,9 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   var accumulated_df = Seq.empty[targetSchemeTarget].toDF()
 
   val query_part2 =
-    """_sql
-           from
-      WITH failedrun as (
-           select table_name, count_date, runtime
+    """
+    WITH failedrun as (
+           select table_name, count_date, runtime_sql from
            (   select upper(table_name) table_name, count_date, matched, runtime_sql, count_diff, ROW_NUMBER() OVER (PARTITION BY table_name, count_date ORDER BY extract_date desc, inserted_date desc) rn
                from """ + target_schema + """.bda_data_counts_validation
                where extract_date between date_add('""" + run_date_formatted + """',-""" + rerun_failed_days + """) and date_add('""" + run_date_formatted +
@@ -128,7 +127,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
     catch {
       case e: Throwable =>
         println(e)
-        printf("\n Errors happended for table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s ", table_id, table_name, count_date, runtime_sql)
+        printf("\n Errors happended running count for for table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s ", table_id, table_name, count_date, runtime_sql)
         val inserted_time = new Timestamp(System.currentTimeMillis()).toString
         import spark.implicits._
         var bda_count_failed_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  0, 0, "F", 0 , date_column_name, inserted_time, runtime_sql+" has failed")).toDF
@@ -152,7 +151,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
       val tables_par_array_list_p1 = getParArray(tables_array_list_p1)
 
 
-      logger.info("Starting part I - today's validation:")
+      println("Starting part I - today's validation:")
       tables_par_array_list_p1.foreach {
         eachrow =>
           try {
@@ -170,16 +169,16 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           catch {
               case e: Throwable =>
               println(e)
-              logger.info("Exception happened in Part I with" + eachrow.toString())
+                println("Exception happened in Part I with" + eachrow.toString())
           }
           finally {
             val end_time = new Timestamp(System.currentTimeMillis()).toString
             printf("BdaVapValidation::job for table (%s) is completed at %s", eachrow.toString(), end_time)
           }
       }
-      logger.info("Part I: Today's validation is done")
+      println("Part I: Today's validation is done")
 
-      logger.info("Starting part II - previous days' validation:")
+      println("Starting part II - previous days' validation:")
       val tables_array_list_p2 = spark.sql(query_part2).collect()
       val tables_par_array_list_p2 = getParArray(tables_array_list_p2)
       tables_par_array_list_p2.foreach {
@@ -196,14 +195,14 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           catch {
             case e: Throwable =>
               println(e)
-              logger.info("Exception happened in Part I with" + eachrow.toString())
+              println("Exception happened in Part II with" + eachrow.toString())
           }
           finally {
             val end_time = new Timestamp(System.currentTimeMillis()).toString
             printf("BdaVapValidation::job for table (%s) is completed at %s", eachrow.toString(), end_time)
           }
       }
-      logger.info("Part II: Previous days' validation is done")
+    println("Part II: Previous days' validation is done")
 
     accumulated_df.coalesce(1).write.mode("append").parquet(target_path + "/extract_date=" + run_date_formatted)
       refreshTable()
