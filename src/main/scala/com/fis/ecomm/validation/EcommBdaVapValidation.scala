@@ -65,7 +65,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           select t2.table_id, t1.table_name, t2.date_column_name, t1.count_date, t1.runtime_sql
           from failedrun t1
           inner join yes_conf t2 on t1.table_name = t2.table_name""".stripMargin
-
+println(query_part2)
   def getParArray(list: Array[Row]) = {
     val tables = list.par
     tables.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(num_thread.toInt))
