@@ -120,9 +120,8 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                FROM vw_bda_count_df t1
                LEFT JOIN vaprun t2
                ON t1.table_name = t2.table_name""".stripMargin
-        printf("compared_vap_sql: %s\n",compared_vap_sql)
         val vap_vs_bda_count_df = spark.sql(compared_vap_sql)
-      accumulated_df = accumulated_df.union(vap_vs_bda_count_df)
+        accumulated_df = accumulated_df.union(vap_vs_bda_count_df)
     }
     catch {
       case e: Throwable =>
@@ -203,11 +202,11 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           }
       }
     println("Part II: Previous days' validation is done")
-
+    println("Saving accumulated dataframe")
     accumulated_df.coalesce(1).write.mode("append").parquet(target_path + "/extract_date=" + run_date_formatted)
       refreshTable()
       val end_time = new Timestamp(System.currentTimeMillis()).toString
-      printf("EcommBdaVapValidation::job is started at %s", end_time)
+      printf("EcommBdaVapValidation::job is done at %s", end_time)
 
   } //2 parts
   catch {
