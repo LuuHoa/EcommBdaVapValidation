@@ -56,9 +56,8 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
            select table_name, count_date, runtime_sql from
            (   select upper(table_name) table_name, count_date, matched, runtime_sql, count_diff, ROW_NUMBER() OVER (PARTITION BY table_name, count_date ORDER BY extract_date desc, inserted_date desc) rn
                from """ + target_schema + """.bda_data_counts_validation
-               where extract_date between date_add('""" + run_date_formatted + """',-""" + rerun_failed_days + """) and date_add('""" + run_date_formatted +
-      """',-1)) a
-           where a.rn = 1 and matched = 'N'),
+               where extract_date between date_add('""" + run_date_formatted + """',-""" + rerun_failed_days + """) and date_add('""" + run_date_formatted +"""',-1)
+            ) a where a.rn = 1 and matched = 'N'),
       yes_conf as (
           select table_id, upper(table_name) table_name , date_column_name
           from """ + target_schema + """.bda_data_validation_conf
@@ -180,6 +179,8 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
       println("Starting part II - previous days' validation:")
       val tables_array_list_p2 = spark.sql(query_part2).collect()
       val tables_par_array_list_p2 = getParArray(tables_array_list_p2)
+    println("tables_par_array_list_p2")
+    println(tables_par_array_list_p2)
       tables_par_array_list_p2.foreach {
         eachrow =>
           try {
