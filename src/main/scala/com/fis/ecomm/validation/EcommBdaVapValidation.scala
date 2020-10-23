@@ -206,7 +206,7 @@ println(query_part2)
   }
   finally {
     spark.stop()
-    System.exit(exitCode)
+   // System.exit(exitCode)
   }
 
 }
