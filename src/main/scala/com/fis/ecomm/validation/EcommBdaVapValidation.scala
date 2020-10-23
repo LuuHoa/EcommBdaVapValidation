@@ -202,8 +202,10 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           }
       }
     println("Part II: Previous days' validation is done")
-    println("Saving accumulated dataframe")
-    accumulated_df.coalesce(1).write.mode("append").parquet(target_path + "/extract_date=" + run_date_formatted)
+    println("Saving accumulated dataframe into:"+target_path + "/extract_date=" + run_date_formatted)
+
+    accumulated_df.show(false)
+    accumulated_df.coalesce(1).write.mode(SaveMode.Append).parquet(target_path + "/extract_date=" + run_date_formatted)
       refreshTable()
       val end_time = new Timestamp(System.currentTimeMillis()).toString
       printf("EcommBdaVapValidation::job is done at %s", end_time)
