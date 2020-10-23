@@ -76,51 +76,38 @@ println(query_part2)
   def runCount(table_id: Int, table_name: String, count_date: String, date_column_name: String, runtime_sql: String): Unit = {
     printf("\n table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s \n", table_id, table_name, count_date, runtime_sql)
     try {
-        val df_count = spark.sql(runtime_sql)
+        val bda_count_df = spark.sql(runtime_sql)
         var bda_count=0L
-        if (!df_count.head(1).isEmpty){
-          val ANYbda_count = df_count.collect.toList(0).get(1)
+        if (!bda_count_df.head(1).isEmpty){
+          val ANYbda_count = bda_count_df.collect.toList(0).get(1)
           if (ANYbda_count != null)
             bda_count = ANYbda_count.toString.toLong
           println(bda_count)
         }
-
-        import spark.implicits._
-        var bda_count_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  bda_count, 0, "", 0 , date_column_name, "", runtime_sql)).toDF
-        bda_count_df.createOrReplaceTempView("vw_bda_count_df")
-        val compared_vap_sql = """
-              WITH vaprun as (
-               select table_name, target_date, record_count  as vap_count
+        val vap_sql = """
+              select record_count as vap_count
                from
                (
                    select '"""+table_name+"""' as table_name, target_date, record_count, ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY extract_date desc, inserted_date desc) rn
                    from """+target_schema+""".vap_to_bda_data_validation
-                   where extract_date between '"""+count_date+"""' and to_date(current_date())
+                   where extract_date between '"""+count_date+"""' and current_date()
                    and table_name = 'CONTEXT_"""+ table_name +"""'
                    and target_date = '"""+ count_date +"""'
-               ) a where a.rn  = 1 )
-               Select CAST(t1.gdg_position AS bigint),
-                    CAST(t1.gdg_txoppos AS bigint),
-                    CAST(t1.gdg_txind AS string),
-                    CAST(t1.gdg_opcode AS string),
-                    CAST(t1.gdg_timestamp AS string),
-                    CAST(t1.gdg_schema AS string),
-                    CAST(t1.gdg_table AS string),
-                    CAST(t1.id AS bigint),
-                    CAST(t1.table_name AS string),
-                    CAST(t1.count_date AS string),
-                    CAST(t1.bda_count AS bigint),
-                    CAST(t2.vap_count AS bigint),
-                    CASE WHEN (NVL(t1.bda_count,0)==NVL(t2.vap_count,0)) THEN 'Y' ELSE 'N' END AS matched,
-                    CAST(NVL(t1.bda_count,0) - NVL(t2.vap_count,0) AS bigint) AS count_diff,
-                    CAST(t1.date_column_name AS STRING) as date_column_name,
-                    CAST (now() AS STRING) AS  inserted_date,
-                    CAST(t1.runtime_sql AS string)
-               FROM vw_bda_count_df t1
-               LEFT JOIN vaprun t2
-               ON t1.table_name = t2.table_name""".stripMargin
-        val vap_vs_bda_count_df = spark.sql(compared_vap_sql)
-        accumulated_df = accumulated_df.union(vap_vs_bda_count_df)
+               ) a where a.rn  = 1 """.stripMargin
+        val vap_count_df = spark.sql(vap_sql)
+        var vap_count=0L
+        if (!vap_count_df.head(1).isEmpty){
+          val ANYvap_count = vap_count_df.collect.toList(0).get(0)
+          if (ANYvap_count != null)
+            vap_count = ANYvap_count.toString.toLong
+        }
+        var matched = "N"
+        if (bda_count==vap_count) matched = "Y"
+        
+        val inserted_time = new Timestamp(System.currentTimeMillis()).toString
+        import spark.implicits._
+        var vap_bda_count_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  bda_count, vap_count, matched, (bda_count-vap_count) , date_column_name, inserted_time, runtime_sql)).toDF
+        accumulated_df = accumulated_df.union(vap_bda_count_df)
     }
     catch {
       case e: Throwable =>
