@@ -25,7 +25,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   var application_id = spark.sparkContext.getConf.getAppId
   //val logger = LoggerFactory.getLogger(getClass.getName)
   var exitCode=0
-  var prop_location = "/tmp/Ecomm_BDA_VAP_Validation/EcommValidationConfig.properties"
+  var prop_location = "/scripts/config/EcommValidationConfig.properties"
   try { prop_location = args(0) }
   catch { case e: Throwable => println("Use default property file: " + prop_location) }
 
