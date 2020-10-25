@@ -30,11 +30,11 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   catch { case e: Throwable => println("Use default property file: " + prop_location) }
 
 
-  
+
   val start_time = new Timestamp(System.currentTimeMillis()).toString
   println("EcommBdaVapValidation::job is started at " + start_time)
   println("Spark application Id: " + application_id)
-  
+
   val props_rdd = spark.sparkContext.textFile(prop_location)
   val props = props_rdd.collect().toList.flatMap(x => x.split('=')).grouped(2).collect { case List(k, v) => k -> v }.toMap
   printf("\n Properties: %s \n", props.toString)
@@ -43,7 +43,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val target_schema = props("target_schema")
   val rerun_failed_days = props("rerun_failed_days")
   val num_thread = props("num_thread")
-    
+
   val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
   println("Run date value: " + run_date_formatted)
@@ -53,19 +53,19 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val query_part2 =
     """
     WITH failedrun as (
-           select table_name, count_date, runtime_sql from
+           select table_name, count_date, sql from
            (   select upper(table_name) table_name, count_date, matched, runtime_sql, count_diff, ROW_NUMBER() OVER (PARTITION BY table_name, count_date ORDER BY extract_date desc, inserted_date desc) rn
                from """ + target_schema + """.bda_data_counts_validation
                where extract_date between date_add('""" + run_date_formatted + """',-""" + rerun_failed_days + """) and date_add('""" + run_date_formatted +"""',-1)
             ) a where a.rn = 1 and matched = 'N'),
       yes_conf as (
-          select table_id, upper(table_name) table_name , date_column_name
+          select table_id, upper(table_name) table_name , date_column_name, sql
           from """ + target_schema + """.bda_data_validation_conf
           where failed_rerun = 'Y')
           select t2.table_id, t1.table_name, t2.date_column_name, t1.count_date, t1.runtime_sql
           from failedrun t1
           inner join yes_conf t2 on t1.table_name = t2.table_name""".stripMargin
-println(query_part2)
+
   def getParArray(list: Array[Row]) = {
     val tables = list.par
     tables.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(num_thread.toInt))
@@ -103,7 +103,7 @@ println(query_part2)
         }
         var matched = "N"
         if (bda_count==vap_count) matched = "Y"
-        
+
         val inserted_time = new Timestamp(System.currentTimeMillis()).toString
         import spark.implicits._
         var vap_bda_count_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  bda_count, vap_count, matched, (bda_count-vap_count) , date_column_name, inserted_time, runtime_sql)).toDF
@@ -119,7 +119,6 @@ println(query_part2)
         accumulated_df = accumulated_df.union(bda_count_failed_df)
         println("Save failed-record "+table_name+" into target bda_data_counts_validation is completed.")
     }
-
   }
 
   def refreshTable():Unit = {
@@ -134,8 +133,6 @@ println(query_part2)
       import spark.implicits._
       val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
       val tables_par_array_list_p1 = getParArray(tables_array_list_p1)
-
-
       println("Starting part I - today's validation:")
       tables_par_array_list_p1.foreach {
         eachrow =>
@@ -164,19 +161,18 @@ println(query_part2)
       println("Part I: Today's validation is done")
 
       println("Starting part II - previous days' validation:")
+      println(query_part2)
       val tables_array_list_p2 = spark.sql(query_part2).collect()
       val tables_par_array_list_p2 = getParArray(tables_array_list_p2)
-    println("tables_par_array_list_p2")
-    println(tables_par_array_list_p2)
+      //println("List Tables running in Part II:"+ tables_array_list_p2.toString)
       tables_par_array_list_p2.foreach {
         eachrow =>
           try {
-
             val table_id = eachrow.getInt(0)
             val table_name = eachrow.getString(1)
             val date_column_name = eachrow.getString(2)
             val count_date = eachrow.getString(3)
-            val runtime_sql = eachrow(4).toString
+            val runtime_sql = eachrow(4).toString.replace("{var1}", "'" + count_date + "'")
             runCount(table_id, table_name, count_date, date_column_name, runtime_sql)
           }
           catch {
