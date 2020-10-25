@@ -53,7 +53,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val query_part2 =
     """
     WITH failedrun as (
-           select table_name, count_date, sql from
+           select table_name, count_date, runtime_sql from
            (   select upper(table_name) table_name, count_date, matched, runtime_sql, count_diff, ROW_NUMBER() OVER (PARTITION BY table_name, count_date ORDER BY extract_date desc, inserted_date desc) rn
                from """ + target_schema + """.bda_data_counts_validation
                where extract_date between date_add('""" + run_date_formatted + """',-""" + rerun_failed_days + """) and date_add('""" + run_date_formatted +"""',-1)
@@ -62,7 +62,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           select table_id, upper(table_name) table_name , date_column_name, sql
           from """ + target_schema + """.bda_data_validation_conf
           where failed_rerun = 'Y')
-          select t2.table_id, t1.table_name, t2.date_column_name, t1.count_date, t1.runtime_sql
+          select t2.table_id, t1.table_name, t2.date_column_name, t1.count_date, t2.sql
           from failedrun t1
           inner join yes_conf t2 on t1.table_name = t2.table_name""".stripMargin
 
@@ -82,7 +82,6 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           val ANYbda_count = bda_count_df.collect.toList(0).get(1)
           if (ANYbda_count != null)
             bda_count = ANYbda_count.toString.toLong
-          println(bda_count)
         }
         val vap_sql = """
               select record_count as vap_count
@@ -150,7 +149,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
           }
           catch {
               case e: Throwable =>
-              println(e)
+                println(e)
                 println("Exception happened in Part I with" + eachrow.toString())
           }
           finally {
