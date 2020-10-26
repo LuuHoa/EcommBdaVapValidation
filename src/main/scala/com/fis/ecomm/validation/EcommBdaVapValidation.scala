@@ -44,7 +44,11 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val rerun_failed_days = props("rerun_failed_days")
   val num_thread = props("num_thread")
 
-  val run_date = java.time.LocalDate.now.toString
+  var run_date = java.time.LocalDate.now.toString
+  try { run_date = args(1) }
+  catch { case e: Throwable => println("Use default run date: " + run_date) }
+
+  //val run_date = java.time.LocalDate.now.toString
   val run_date_formatted = LocalDate.parse(run_date, DateTimeFormatter.ofPattern("yyyy-MM-dd"))
   println("Run date value: " + run_date_formatted)
   import spark.implicits._
