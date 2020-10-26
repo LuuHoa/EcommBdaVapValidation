@@ -1,6 +1,6 @@
 package com.fis.ecomm.validation
 
-import org.slf4j.LoggerFactory
+
 import org.apache.spark.sql._
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -23,7 +23,6 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   spark.sparkContext.setLogLevel("INFO")
 
   var application_id = spark.sparkContext.getConf.getAppId
-  //val logger = LoggerFactory.getLogger(getClass.getName)
   var exitCode=0
   var prop_location = "/scripts/config/EcommValidationConfig.properties"
   try { prop_location = args(0) }
@@ -43,6 +42,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val target_schema = props("target_schema")
   val rerun_failed_days = props("rerun_failed_days")
   val num_thread = props("num_thread")
+  val prefix_vap_tab = props("prefix_vap_tab")
 
   var run_date = java.time.LocalDate.now.toString
   try { run_date = args(1) }
@@ -94,7 +94,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                    select '"""+table_name+"""' as table_name, target_date, record_count, ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY extract_date desc, inserted_date desc) rn
                    from """+target_schema+""".vap_to_bda_data_validation
                    where extract_date between '"""+count_date+"""' and current_date()
-                   and table_name = 'CONTEXT_"""+ table_name +"""'
+                   and table_name = '"""+ prefix_vap_tab + table_name +"""'
                    and target_date = '"""+ count_date +"""'
                ) a where a.rn  = 1 """.stripMargin
         val vap_count_df = spark.sql(vap_sql)
