@@ -118,7 +118,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
         printf("\n Errors happended running count for for table_id: %d - table_name: %s - count_date: %s - runtime_sql: %s \n", table_id, table_name, count_date, runtime_sql)
         val inserted_time = new Timestamp(System.currentTimeMillis()).toString
         import spark.implicits._
-        var bda_count_failed_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  0, 0, "F", 0 , date_column_name, inserted_time, runtime_sql+" has failed")).toDF
+        var bda_count_failed_df= Seq(targetSchemeTarget(1,1,"1","1","1","1","1", table_id, table_name, count_date,  0, 0, "F", 0 , date_column_name, inserted_time, runtime_sql+" has failed in "+ application_id.toString)).toDF
         accumulated_df = accumulated_df.union(bda_count_failed_df)
         println("Save failed-record "+table_name+" into target bda_data_count_validation is completed.")
     }
