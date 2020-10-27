@@ -42,7 +42,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val target_schema = props("target_schema")
   val rerun_failed_days = props("rerun_failed_days")
   val num_thread = props("num_thread")
-  val prefix_vap_tab = props("prefix_vap_tab")
+  val prefix_vap_tab = props("prefix_vap_tab").trim
 
   var run_date = java.time.LocalDate.now.toString
   try { run_date = args(1) }
