@@ -97,6 +97,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                    and table_name = '"""+ prefix_vap_tab + table_name +"""'
                    and target_date = '"""+ count_date +"""'
                ) a where a.rn  = 1 """.stripMargin
+      print(vap_sql)
         val vap_count_df = spark.sql(vap_sql)
         var vap_count=0L
         if (!vap_count_df.head(1).isEmpty){
