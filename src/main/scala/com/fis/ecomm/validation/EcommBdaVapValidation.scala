@@ -137,10 +137,10 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
       import spark.implicits._
       //val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
       val conf_list_query = """
-       with thelist as (select * from """+target_schema+"""+.bda_data_validation_conf where count_ind = 'Y')
+       with thelist as (select * from """+target_schema+""".bda_data_validation_conf where count_ind = 'Y')
        select * from thelist where table_type = 'TRAN'
        UNION ALL
-       select * from thelist a
+       select a.* from thelist a
        inner join audit.vap_to_bda_data_validation b
        where a.table_type = 'DIM'
        and a.table_name = b.table_name
