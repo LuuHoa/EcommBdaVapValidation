@@ -6,6 +6,7 @@ import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.sql.Timestamp
 import scala.collection.parallel.ForkJoinTaskSupport
+import scala.concurrent.forkjoin.ForkJoinPool
 import org.apache.spark.sql.SparkSession
 
 object EcommBdaVapValidation extends Serializable with App {
@@ -42,7 +43,6 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   val target_schema = props("target_schema")
   val rerun_failed_days = props("rerun_failed_days")
   val num_thread = props("num_thread")
-  val prefix_vap_tab = props("prefix_vap_tab").trim
 
   var run_date = java.time.LocalDate.now.toString
   try { run_date = args(1) }
@@ -72,7 +72,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
 
   def getParArray(list: Array[Row]) = {
     val tables = list.par
-    tables.tasksupport = new ForkJoinTaskSupport(new scala.concurrent.forkjoin.ForkJoinPool(num_thread.toInt))
+    tables.tasksupport = new ForkJoinTaskSupport(new ForkJoinPool(num_thread.toInt))
     tables
   }
 
@@ -92,9 +92,9 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                from
                (
                    select '"""+table_name+"""' as table_name, target_date, record_count, ROW_NUMBER() OVER (PARTITION BY table_name ORDER BY extract_date desc, inserted_date desc) rn
-                   from """+target_schema+""".vap_to_bda_data_validation
+                   from audit.vap_to_bda_data_validation
                    where extract_date between '"""+count_date+"""' and current_date()
-                   and table_name = '"""+ prefix_vap_tab + table_name +"""'
+                   and table_name = '"""+ table_name +"""'
                    and target_date = '"""+ count_date +"""'
                ) a where a.rn  = 1 """.stripMargin
       print(vap_sql)
@@ -131,11 +131,23 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
     spark.sql(addPartitionStatmt)
     spark.sql("REFRESH TABLE "+target_schema+".bda_data_count_validation")
   }
-
+//main job
   try{
 
       import spark.implicits._
-      val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
+      //val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
+      val conf_list_query = """
+       with thelist as (select * from """+target_schema+"""+.bda_data_validation_conf where count_ind = 'Y')
+       select * from thelist where table_type = 'TRAN'
+       UNION ALL
+       select * from thelist a
+       inner join audit.vap_to_bda_data_validation b
+       where a.table_type = 'DIM'
+       and a.table_name = b.table_name
+       and b.extract_date = '"""+run_date_formatted.toString+"""'"""
+
+      val tables_array_list_p1 = spark.sql(conf_list_query).collect()
+
       val tables_par_array_list_p1 = getParArray(tables_array_list_p1)
       println("Starting part I - today's validation:")
       tables_par_array_list_p1.foreach {
