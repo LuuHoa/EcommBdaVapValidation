@@ -135,8 +135,8 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
   try{
 
       import spark.implicits._
-      //val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
-      val conf_list_query = """
+      val tables_array_list_p1 = spark.read.parquet(source_fil_list_Path).filter($"count_ind" === "Y").collect()
+       /* val conf_list_query = """
        with thelist as (select * from """+target_schema+""".bda_data_validation_conf where count_ind = 'Y')
        select * from thelist where table_type = 'TRAN'
        UNION ALL
@@ -144,9 +144,9 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
        inner join audit.vap_to_bda_data_validation b
        where a.table_type = 'DIM'
        and a.table_name = b.table_name
-       and b.extract_date = '"""+run_date_formatted.toString+"""'"""
+       and b.extract_date = '"""+run_date_formatted.toString+"""'""" */
 
-      val tables_array_list_p1 = spark.sql(conf_list_query).collect()
+      //val tables_array_list_p1 = spark.sql(conf_list_query).collect()
 
       val tables_par_array_list_p1 = getParArray(tables_array_list_p1)
       println("Starting part I - today's validation:")
