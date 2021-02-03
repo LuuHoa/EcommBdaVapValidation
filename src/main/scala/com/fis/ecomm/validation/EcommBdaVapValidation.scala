@@ -97,7 +97,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
                    and table_name = '"""+ table_name +"""'
                    and target_date = '"""+ count_date +"""'
                ) a where a.rn  = 1 """.stripMargin
-      print(vap_sql)
+      //print(vap_sql)
         val vap_count_df = spark.sql(vap_sql)
         var vap_count=0L
         if (!vap_count_df.head(1).isEmpty){
@@ -176,7 +176,7 @@ case class targetSchemeTarget(gdg_position: Long, gdg_txoppos: Long, gdg_txind: 
       }
       println("Part I: Today's validation is done")
       println("Starting part II - previous days' validation:")
-      println(query_part2)
+      //println(query_part2)
       val tables_array_list_p2 = spark.sql(query_part2).collect()
       val tables_par_array_list_p2 = getParArray(tables_array_list_p2)
       //println("List Tables running in Part II:"+ tables_array_list_p2.toString)
